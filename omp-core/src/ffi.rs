@@ -102,6 +102,29 @@ pub unsafe extern "C" fn omp_core_launch(config_json: *const c_char) -> *mut c_c
     })
 }
 
+/// Queries the player list for a specific server.
+/// Returns a JSON string array of ClientResponse.
+///
+/// # Safety
+/// * `ip` must be a valid, null-terminated C string (or null).
+/// * The returned pointer must be freed by the caller using `omp_core_free_string` to avoid memory leaks.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn omp_core_query_clients(ip: *const c_char, port: u16) -> *mut c_char {
+    safe_ffi!(|| {
+        let ip_str = unsafe {
+            if ip.is_null() {
+                return to_c_char(json!({ "error": "IP is null" }).to_string());
+            }
+            CStr::from_ptr(ip).to_str().unwrap_or("")
+        };
+        
+        match query::query_clients(ip_str, port) {
+            Ok(clients) => to_c_char(serde_json::to_string(&clients).unwrap()),
+            Err(e) => to_c_char(json!({ "error": e }).to_string()),
+        }
+    })
+}
+
 /// Safely deallocates a C-string previously allocated and returned by this library.
 ///
 /// # Safety

@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "omp-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "reqwest",
@@ -958,8 +958,8 @@ dependencies = [
 
 [[package]]
 name = "samp-query"
-version = "0.1.0"
-source = "git+https://github.com/TanF12/samp-query#4d388bcf99343f97cff82d57bdc5832e0a8a1b0c"
+version = "0.1.2"
+source = "git+https://github.com/TanF12/samp-query#4805f8b2d0132ff6ce699c4da060d211022f48f6"
 
 [[package]]
 name = "schannel"

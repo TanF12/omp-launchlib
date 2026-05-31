@@ -15,6 +15,14 @@ pub struct ServerInfo {
     pub error: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct ClientResponse {
+    pub id: u8,
+    pub name: String,
+    pub score: i32,
+    pub ping: u32,
+}
+
 pub fn query_server(ip: &str, port: u16) -> Result<ServerInfo, String> {
     let target = format!("{}:{}", ip, port);
     let client = SampClient::new(Duration::from_secs(2)).map_err(|e| e.to_string())?;
@@ -68,4 +76,33 @@ pub fn query_batch(targets: Vec<String>) -> Result<Vec<ServerInfo>, String> {
         }
     }
     Ok(parsed)
+}
+
+pub fn query_clients(ip: &str, port: u16) -> Result<Vec<ClientResponse>, String> {
+    let target = format!("{}:{}", ip, port);
+    let client = SampClient::new(Duration::from_secs(2)).map_err(|e| e.to_string())?;
+
+    match client.get_detailed_clients(&target) {
+        Ok(detailed) => Ok(detailed
+            .into_iter()
+            .map(|c| ClientResponse {
+                id: c.player_id,
+                name: c.name,
+                score: c.score,
+                ping: c.ping,
+            })
+            .collect()),
+        Err(_) => {
+            let basic = client.get_clients(&target).map_err(|e| e.to_string())?;
+            Ok(basic
+                .into_iter()
+                .map(|c| ClientResponse {
+                    id: 0,
+                    name: c.name,
+                    score: c.score,
+                    ping: 0,
+                })
+                .collect())
+        }
+    }
 }
