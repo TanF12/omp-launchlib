@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "omp-core",
+    "omp-injector"
+]
+resolver = "2"
