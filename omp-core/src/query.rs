@@ -12,6 +12,7 @@ pub struct ServerInfo {
     pub language: String,
     pub password: bool,
     pub ping_ms: u32,
+    pub rules: Option<std::collections::HashMap<String, String>>,
     pub error: Option<String>,
 }
 
@@ -20,7 +21,7 @@ pub struct ClientResponse {
     pub id: u8,
     pub name: String,
     pub score: i32,
-    pub ping: u32,
+    pub ping: Option<u32>,
 }
 
 pub fn query_server(ip: &str, port: u16) -> Result<ServerInfo, String> {
@@ -29,6 +30,13 @@ pub fn query_server(ip: &str, port: u16) -> Result<ServerInfo, String> {
 
     let info = client.get_info(&target).map_err(|e| e.to_string())?;
     let ping = client.get_ping(&target).unwrap_or(Duration::from_millis(0));
+
+    let mut rules_map = std::collections::HashMap::new();
+    if let Ok(rules) = client.get_rules(&target) {
+        for rule in rules {
+            rules_map.insert(rule.name, rule.value);
+        }
+    }
 
     Ok(ServerInfo {
         target: Some(target),
@@ -39,6 +47,7 @@ pub fn query_server(ip: &str, port: u16) -> Result<ServerInfo, String> {
         language: info.mapname.to_string(),
         password: info.password,
         ping_ms: ping.as_millis() as u32,
+        rules: Some(rules_map),
         error: None,
     })
 }
@@ -60,6 +69,7 @@ pub fn query_batch(targets: Vec<String>) -> Result<Vec<ServerInfo>, String> {
                 language: info.mapname.to_string(),
                 password: info.password,
                 ping_ms: res.rtt.as_millis() as u32,
+                rules: None,
                 error: None,
             }),
             Err(e) => parsed.push(ServerInfo {
@@ -71,6 +81,7 @@ pub fn query_batch(targets: Vec<String>) -> Result<Vec<ServerInfo>, String> {
                 language: "".into(),
                 password: false,
                 ping_ms: 0,
+                rules: None,
                 error: Some(e.to_string()),
             }),
         }
@@ -89,7 +100,11 @@ pub fn query_clients(ip: &str, port: u16) -> Result<Vec<ClientResponse>, String>
                 id: c.player_id,
                 name: c.name,
                 score: c.score,
-                ping: c.ping,
+                ping: if c.ping == 4294967295 || c.ping == 65535 {
+                    None
+                } else {
+                    Some(c.ping)
+                },
             })
             .collect()),
         Err(_) => {
@@ -100,7 +115,7 @@ pub fn query_clients(ip: &str, port: u16) -> Result<Vec<ClientResponse>, String>
                     id: 0,
                     name: c.name,
                     score: c.score,
-                    ping: 0,
+                    ping: None,
                 })
                 .collect())
         }

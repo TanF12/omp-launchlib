@@ -19,10 +19,25 @@ macro_rules! safe_ffi {
 
 /// Fetches the global server list from the open.mp API.
 /// Returns a JSON string containing the server list.
+///
+/// # Safety
+/// * `url` must be a valid, null-terminated C string (or null).
+/// * The returned pointer must be freed by the caller using `omp_core_free_string` to avoid memory leaks.
 #[unsafe(no_mangle)]
-pub extern "C" fn omp_core_fetch_servers() -> *mut c_char {
+pub unsafe extern "C" fn omp_core_fetch_servers(url: *const c_char) -> *mut c_char {
     safe_ffi!(|| {
-        match api::fetch_server_list() {
+        let url_str = unsafe {
+            if url.is_null() {
+                return to_c_char(json!({ "error": "URL is null" }).to_string());
+            }
+            CStr::from_ptr(url).to_str().unwrap_or("")
+        };
+
+        if url_str.is_empty() || url_str.to_lowercase() == "disabled" {
+            return to_c_char("[]".to_string());
+        }
+
+        match api::fetch_server_list(url_str) {
             Ok(servers) => to_c_char(serde_json::to_string(&servers).unwrap()),
             Err(e) => to_c_char(json!({ "error": e }).to_string()),
         }
@@ -117,7 +132,7 @@ pub unsafe extern "C" fn omp_core_query_clients(ip: *const c_char, port: u16) ->
             }
             CStr::from_ptr(ip).to_str().unwrap_or("")
         };
-        
+
         match query::query_clients(ip_str, port) {
             Ok(clients) => to_c_char(serde_json::to_string(&clients).unwrap()),
             Err(e) => to_c_char(json!({ "error": e }).to_string()),
